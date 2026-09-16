@@ -1,21 +1,23 @@
-import { createContext, useContext, useState } from 'react';
+import { useState } from 'react';
+import { AuthContext } from './AuthContext';
+import { createId } from '../utils/id';
+import { readStored } from '../utils/storage';
 
-const AuthContext = createContext(null);
-
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+export default function AuthProvider({ children }) {
+  // Lazy initializer: restore sesi pada render pertama, tanpa efek samping
+  // di dalam useState(() => {...}) yang dijalankan ganda oleh StrictMode.
+  const [user, setUser] = useState(() => readStored('vtuber_user', null));
+  const [isAuthenticated, setIsAuthenticated] = useState(() => user !== null);
 
   // Simulasi login - nanti akan diganti dengan API call
   const login = (email, password, role) => {
     // Mock authentication - di production ini akan call backend
     if (email && password) {
       const mockUser = {
-        id: 'user-' + Date.now(),
+        id: createId('user'),
         email,
         role: role || 'user', // 'admin' atau 'user'
         name: email.split('@')[0],
-        storageQuota: 100 * 1024 * 1024, // 100MB default
         createdAt: new Date().toISOString()
       };
       
@@ -33,20 +35,6 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('vtuber_user');
   };
 
-  // Restore session dari localStorage
-  useState(() => {
-    const savedUser = localStorage.getItem('vtuber_user');
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        setUser(parsed);
-        setIsAuthenticated(true);
-      } catch (e) {
-        console.error('Failed to restore session:', e);
-      }
-    }
-  });
-
   return (
     <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>
       {children}
@@ -54,10 +42,3 @@ export function AuthProvider({ children }) {
   );
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth harus digunakan dalam AuthProvider');
-  }
-  return context;
-}

@@ -1,0 +1,17 @@
+# Netlify membaca file ini dari ROOT repo secara default.
+# Aplikasi berada di subfolder `vtuber-schedule-platform/`, jadi `base`
+# mengarahkan build ke sana — dengan begini site tetap bisa di-deploy
+# walau Base directory di dashboard Netlify dibiarkan kosong.
+#
+# (vtuber-schedule-platform/netlify.toml tetap dipertahankan agar build
+#  juga berjalan bila Base directory disetel ke subfolder tersebut.)
+[build]
+  base = "vtuber-schedule-platform"
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback: semua route dilayani index.html, React Router yang mengatur.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

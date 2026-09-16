@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-
-const TemplateContext = createContext(null);
+import { useState } from 'react';
+import { TemplateContext } from './TemplateContext';
+import { createId } from '../utils/id';
+import { readStored } from '../utils/storage';
 
 // Master Templates - ini akan datang dari database di production
 const MASTER_TEMPLATES = [
@@ -8,7 +9,6 @@ const MASTER_TEMPLATES = [
     id: 'template-1',
     name: 'Classic VTuber',
     description: 'Template klasik dengan layout bersih',
-    thumbnail: '/templates/classic.png',
     aspectRatio: '16:9',
     resolution: { width: 1920, height: 1080 },
     lockedElements: ['canvas-ratio', 'export-resolution'],
@@ -26,7 +26,6 @@ const MASTER_TEMPLATES = [
     id: 'template-2',
     name: 'Neon Cyberpunk',
     description: 'Gaya neon futuristik untuk stream malam',
-    thumbnail: '/templates/cyberpunk.png',
     aspectRatio: '16:9',
     resolution: { width: 1920, height: 1080 },
     lockedElements: ['canvas-ratio', 'export-resolution'],
@@ -45,7 +44,6 @@ const MASTER_TEMPLATES = [
     id: 'template-3',
     name: 'Soft Pastel',
     description: 'Warna pastel lembut untuk aesthetic yang cute',
-    thumbnail: '/templates/pastel.png',
     aspectRatio: '16:9',
     resolution: { width: 1920, height: 1080 },
     lockedElements: ['canvas-ratio', 'export-resolution'],
@@ -61,33 +59,29 @@ const MASTER_TEMPLATES = [
   }
 ];
 
-export function TemplateProvider({ children }) {
-  const [userTemplates, setUserTemplates] = useState([]);
-  const [currentTemplate, setCurrentTemplate] = useState(null);
-  const [schedules, setSchedules] = useState([]);
 
-  // Load user templates dari localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('vtuber_templates');
-    if (saved) {
-      try {
-        setUserTemplates(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to load templates:', e);
-      }
-    }
-  }, []);
+export default function TemplateProvider({ children }) {
+  // Lazy initializer (bukan useEffect) supaya data sudah tersedia pada render
+  // pertama. Kalau dimuat di useEffect, konsumen seperti TemplateEditor akan
+  // melihat template `undefined` pada render pertama dan mengunci state ke {}.
+  const [userTemplates, setUserTemplates] = useState(() => readStored('vtuber_templates', []));
+  const [schedules, setSchedules] = useState(() => readStored('vtuber_schedules', []));
+  // Master template juga disimpan, supaya kelola template oleh admin bertahan
+  // setelah reload. MASTER_TEMPLATES berperan sebagai seed awal.
+  const [masterTemplates, setMasterTemplates] = useState(() =>
+    readStored('vtuber_master_templates', MASTER_TEMPLATES)
+  );
 
   // Clone template dari master ke workspace user
   const cloneTemplate = (templateId, userId) => {
-    const masterTemplate = MASTER_TEMPLATES.find(t => t.id === templateId);
+    const masterTemplate = masterTemplates.find(t => t.id === templateId);
     if (!masterTemplate) {
       return { success: false, error: 'Template tidak ditemukan' };
     }
 
     const clonedTemplate = {
       ...masterTemplate,
-      id: `user-template-${Date.now()}`,
+      id: createId('user-template'),
       masterTemplateId: templateId,
       ownerId: userId,
       createdAt: new Date().toISOString(),
@@ -126,7 +120,7 @@ export function TemplateProvider({ children }) {
   // Simpan jadwal untuk template
   const saveSchedule = (templateId, scheduleData) => {
     const newSchedule = {
-      id: `schedule-${Date.now()}`,
+      id: createId('schedule'),
       templateId,
       entries: scheduleData.entries || [],
       timezone: scheduleData.timezone || 'Asia/Jakarta',
@@ -141,7 +135,31 @@ export function TemplateProvider({ children }) {
   };
 
   // Dapatkan master templates (public gallery)
-  const getMasterTemplates = () => MASTER_TEMPLATES;
+  const getMasterTemplates = () => masterTemplates;
+
+  // Tambah master template baru (dipakai Super Admin)
+  const addMasterTemplate = (templateData) => {
+    const newTemplate = {
+      aspectRatio: '16:9',
+      resolution: { width: 1920, height: 1080 },
+      lockedElements: ['canvas-ratio', 'export-resolution'],
+      customizableElements: ['colors', 'fonts', 'character-position'],
+      ...templateData,
+      id: createId('template'),
+    };
+    const updated = [...masterTemplates, newTemplate];
+    setMasterTemplates(updated);
+    localStorage.setItem('vtuber_master_templates', JSON.stringify(updated));
+    return { success: true, template: newTemplate };
+  };
+
+  // Hapus master template (dipakai Super Admin)
+  const deleteMasterTemplate = (templateId) => {
+    const updated = masterTemplates.filter(t => t.id !== templateId);
+    setMasterTemplates(updated);
+    localStorage.setItem('vtuber_master_templates', JSON.stringify(updated));
+    return { success: true };
+  };
 
   // Dapatkan template user by ID
   const getUserTemplate = (templateId) => {
@@ -159,25 +177,18 @@ export function TemplateProvider({ children }) {
   return (
     <TemplateContext.Provider value={{
       userTemplates,
-      currentTemplate,
       schedules,
       cloneTemplate,
       updateTemplateConfig,
       saveSchedule,
       getMasterTemplates,
+      addMasterTemplate,
+      deleteMasterTemplate,
       getUserTemplate,
-      deleteTemplate,
-      setCurrentTemplate
+      deleteTemplate
     }}>
       {children}
     </TemplateContext.Provider>
   );
 }
 
-export function useTemplate() {
-  const context = useContext(TemplateContext);
-  if (!context) {
-    throw new Error('useTemplate harus digunakan dalam TemplateProvider');
-  }
-  return context;
-}

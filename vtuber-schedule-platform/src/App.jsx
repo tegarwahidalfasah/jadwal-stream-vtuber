@@ -1,10 +1,13 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { TemplateProvider } from './context/TemplateContext';
+import { BrowserRouter, Routes, Route, Navigate, useParams, Link } from 'react-router-dom';
+import AuthProvider from './context/AuthProvider';
+import { useAuth } from './hooks/useAuth';
+import TemplateProvider from './context/TemplateProvider';
 import LoginPage from './pages/LoginPage';
 import UserDashboard from './pages/UserDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import TemplateEditor from './pages/TemplateEditor';
+import PreviewPage from './pages/PreviewPage';
+import StreamPage from './pages/StreamPage';
 import CommunityHub from './pages/CommunityHub';
 import './index.css';
 
@@ -38,12 +41,33 @@ function AdminRoute({ children }) {
   return children;
 }
 
-// Stream View (untuk Browser Source OBS - public access dengan clean URL)
-function StreamView({ userId, templateId }) {
+// Editor dan Preview dipasang dengan key={templateId} agar berpindah template
+// me-remount komponen, sehingga state lokal selalu segar per template.
+function EditorRoute() {
+  const { templateId } = useParams();
   return (
-    <div className="stream-view">
-      <h1>Stream View: {userId} / {templateId}</h1>
-      <p>Jadwal akan ditampilkan di sini dalam format yang optimal untuk OBS</p>
+    <UserRoute>
+      <TemplateEditor key={templateId} />
+    </UserRoute>
+  );
+}
+
+function PreviewRoute() {
+  const { templateId } = useParams();
+  return (
+    <UserRoute>
+      <PreviewPage key={templateId} />
+    </UserRoute>
+  );
+}
+
+function NotFound() {
+  return (
+    <div className="error-page">
+      <h2>Halaman tidak ditemukan</h2>
+      <Link to="/community" className="action-btn primary">
+        Kembali ke Community Hub
+      </Link>
     </div>
   );
 }
@@ -63,22 +87,8 @@ function AppRoutes() {
           </UserRoute>
         } 
       />
-      <Route 
-        path="/editor/:templateId" 
-        element={
-          <UserRoute>
-            <TemplateEditor />
-          </UserRoute>
-        } 
-      />
-      <Route 
-        path="/preview/:templateId" 
-        element={
-          <UserRoute>
-            <div>Preview Page (Coming Soon)</div>
-          </UserRoute>
-        } 
-      />
+      <Route path="/editor/:templateId" element={<EditorRoute />} />
+      <Route path="/preview/:templateId" element={<PreviewRoute />} />
       
       <Route 
         path="/admin/dashboard" 
@@ -89,17 +99,10 @@ function AppRoutes() {
         } 
       />
       
-      <Route 
-        path="/stream/:userId/:templateId" 
-        element={
-          <StreamView 
-            userId={window.location.pathname.split('/')[2]} 
-            templateId={window.location.pathname.split('/')[3]} 
-          />
-        } 
-      />
+      {/* Public — dipakai sebagai Browser Source OBS */}
+      <Route path="/stream/:userId/:templateId" element={<StreamPage />} />
       
-      <Route path="*" element={<div>Halaman tidak ditemukan</div>} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
