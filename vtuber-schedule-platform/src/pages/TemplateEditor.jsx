@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTemplate } from '../context/TemplateContext';
-import { useAuth } from '../context/AuthContext';
+import { useTemplate } from '../hooks/useTemplate';
+import { useAuth } from '../hooks/useAuth';
 import { exportToPNG, generateBrowserSourceURL } from '../services/exportService';
+import ScheduleCanvas from '../components/ScheduleCanvas';
+import { CANVAS_DEFAULTS } from '../utils/canvasDefaults';
+import { useToast } from '../hooks/useToast';
+import { createId } from '../utils/id';
+import { getDayName } from '../utils/format';
 import { 
   Save, Download, Type, Palette, Image as ImageIcon, 
   MonitorPlay, Check, X 
@@ -13,12 +18,14 @@ export default function TemplateEditor() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { getUserTemplate, updateTemplateConfig, saveSchedule, schedules } = useTemplate();
+  const toast = useToast();
   
   const template = getUserTemplate(templateId);
   // Config diambil langsung dari context (single source of truth). Menyimpannya
   // di useState(template?.config || {}) membuat config terkunci ke {} bila
   // template belum tersedia saat render pertama — kustomisasi user lalu hilang.
   const config = template?.config || {};
+  const position = { ...CANVAS_DEFAULTS.characterPosition, ...config.characterPosition };
   const storedSchedule = schedules.find((s) => s.templateId === templateId);
   // TemplateContext memuat localStorage secara sinkron (lazy initializer), jadi
   // jadwal tersimpan sudah tersedia pada render pertama. App.jsx memasang
@@ -59,7 +66,7 @@ export default function TemplateEditor() {
 
   const addScheduleEntry = () => {
     const newEntry = {
-      id: `entry-${Date.now()}`,
+      id: createId('entry'),
       day: 1, // Senin
       time: '19:00',
       title: '',
@@ -82,16 +89,18 @@ export default function TemplateEditor() {
   const handleSaveSchedule = () => {
     const result = saveSchedule(templateId, { entries: scheduleEntries });
     if (result.success) {
-      alert('Jadwal berhasil disimpan!');
+      toast.notify('Jadwal berhasil disimpan');
+    } else {
+      toast.notify(result.error || 'Gagal menyimpan jadwal', 'error');
     }
   };
 
   const handleExportPNG = async () => {
     const result = await exportToPNG('preview-canvas', `schedule-${template.name}.png`);
     if (result.success) {
-      alert('Gambar berhasil diunduh!');
+      toast.notify('Gambar berhasil diunduh');
     } else {
-      alert('Gagal export: ' + result.error);
+      toast.notify('Gagal export: ' + result.error, 'error');
     }
   };
 
@@ -101,9 +110,14 @@ export default function TemplateEditor() {
     setShowExportOptions(true);
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    alert('URL disalin ke clipboard!');
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.notify('URL disalin ke clipboard');
+    } catch {
+      // Clipboard API butuh konteks aman (https) dan izin pengguna.
+      toast.notify('Browser menolak akses clipboard — salin manual URL-nya', 'error');
+    }
   };
 
   return (
@@ -140,28 +154,28 @@ export default function TemplateEditor() {
               <label>Background</label>
               <input
                 type="color"
-                value={config.backgroundColor || '#1a1a2e'}
+                value={config.backgroundColor || CANVAS_DEFAULTS.backgroundColor}
                 onChange={(e) => handleConfigChange('backgroundColor', e.target.value)}
               />
-              <span>{config.backgroundColor || '#1a1a2e'}</span>
+              <span>{config.backgroundColor || CANVAS_DEFAULTS.backgroundColor}</span>
             </div>
             <div className="control-group">
               <label>Accent Color</label>
               <input
                 type="color"
-                value={config.accentColor || '#e94560'}
+                value={config.accentColor || CANVAS_DEFAULTS.accentColor}
                 onChange={(e) => handleConfigChange('accentColor', e.target.value)}
               />
-              <span>{config.accentColor || '#e94560'}</span>
+              <span>{config.accentColor || CANVAS_DEFAULTS.accentColor}</span>
             </div>
             <div className="control-group">
               <label>Teks</label>
               <input
                 type="color"
-                value={config.textColor || '#ffffff'}
+                value={config.textColor || CANVAS_DEFAULTS.textColor}
                 onChange={(e) => handleConfigChange('textColor', e.target.value)}
               />
-              <span>{config.textColor || '#ffffff'}</span>
+              <span>{config.textColor || CANVAS_DEFAULTS.textColor}</span>
             </div>
           </div>
 
@@ -169,7 +183,7 @@ export default function TemplateEditor() {
             <h3><Type size={18} /> Font</h3>
             <div className="control-group">
               <select
-                value={config.fontFamily || 'Inter'}
+                value={config.fontFamily || CANVAS_DEFAULTS.fontFamily}
                 onChange={(e) => handleConfigChange('fontFamily', e.target.value)}
               >
                 <option value="Inter">Inter</option>
@@ -194,10 +208,10 @@ export default function TemplateEditor() {
                 type="range"
                 min="0"
                 max="1920"
-                value={config.characterPosition?.x || 1600}
+                value={position.x}
                 onChange={(e) => handleCharacterPositionChange('x', e.target.value)}
               />
-              <span>{config.characterPosition?.x || 1600}px</span>
+              <span>{position.x}px</span>
             </div>
             <div className="control-group">
               <label>Posisi Y</label>
@@ -205,10 +219,10 @@ export default function TemplateEditor() {
                 type="range"
                 min="0"
                 max="1080"
-                value={config.characterPosition?.y || 800}
+                value={position.y}
                 onChange={(e) => handleCharacterPositionChange('y', e.target.value)}
               />
-              <span>{config.characterPosition?.y || 800}px</span>
+              <span>{position.y}px</span>
             </div>
             <div className="control-group">
               <label>Skala</label>
@@ -217,59 +231,22 @@ export default function TemplateEditor() {
                 min="0.2"
                 max="1.5"
                 step="0.1"
-                value={config.characterPosition?.scale || 0.6}
+                value={position.scale}
                 onChange={(e) => handleScaleChange(e.target.value)}
               />
-              <span>{(config.characterPosition?.scale || 0.6) * 100}%</span>
+              <span>{(position.scale) * 100}%</span>
             </div>
           </div>
         </aside>
 
         {/* Canvas Preview */}
         <main className="editor-main">
-          <div className="preview-area">
-            <div 
-              id="preview-canvas"
-              className="schedule-canvas"
-              style={{
-                backgroundColor: config.backgroundColor,
-                color: config.textColor,
-                fontFamily: config.fontFamily
-              }}
-            >
-              <div className="canvas-header">
-                <h2>Jadwal Stream</h2>
-                <p>{user?.name}</p>
-              </div>
-              
-              <div className="canvas-schedule">
-                {scheduleEntries.length === 0 ? (
-                  <p className="empty-canvas">Tambahkan jadwal dari sidebar</p>
-                ) : (
-                  scheduleEntries.map((entry) => (
-                    <div key={entry.id} className="schedule-row">
-                      <span className="day-badge">Hari {entry.day}</span>
-                      <span className="time-badge">{entry.time}</span>
-                      <span className="title-text">{entry.title || 'Judul stream'}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div 
-                className="canvas-character-placeholder"
-                style={{
-                  position: 'absolute',
-                  left: config.characterPosition?.x || 1600,
-                  top: config.characterPosition?.y || 800,
-                  transform: `scale(${config.characterPosition?.scale || 0.6})`,
-                  transformOrigin: 'bottom right'
-                }}
-              >
-                [Karakter VTuber]
-              </div>
-            </div>
-          </div>
+          <ScheduleCanvas
+            config={config}
+            entries={scheduleEntries}
+            streamerName={user?.name}
+            emptyText="Tambahkan jadwal dari sidebar"
+          />
         </main>
 
         {/* Panel Jadwal */}
@@ -293,13 +270,9 @@ export default function TemplateEditor() {
                     value={entry.day}
                     onChange={(e) => updateScheduleEntry(entry.id, 'day', parseInt(e.target.value))}
                   >
-                    <option value={1}>Senin</option>
-                    <option value={2}>Selasa</option>
-                    <option value={3}>Rabu</option>
-                    <option value={4}>Kamis</option>
-                    <option value={5}>Jumat</option>
-                    <option value={6}>Sabtu</option>
-                    <option value={0}>Minggu</option>
+                    {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                      <option key={d} value={d}>{getDayName(d)}</option>
+                    ))}
                   </select>
                   <input
                     type="time"
@@ -354,6 +327,8 @@ export default function TemplateEditor() {
           </div>
         </div>
       )}
+
+      {toast.element}
     </div>
   );
 }

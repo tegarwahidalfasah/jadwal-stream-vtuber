@@ -3,8 +3,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
-import { AuthProvider } from '../context/AuthContext';
-import { TemplateProvider } from '../context/TemplateContext';
+import AuthProvider from '../context/AuthProvider';
+import TemplateProvider from '../context/TemplateProvider';
 import TemplateEditor from '../pages/TemplateEditor';
 
 const TEMPLATE_ID = 'user-template-111';

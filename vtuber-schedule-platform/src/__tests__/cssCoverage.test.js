@@ -16,20 +16,43 @@ function jsxFiles(dir) {
   });
 }
 
+// Hanya token yang bentuknya sah sebagai nama class CSS.
+const CLASS_NAME = /^[A-Za-z][A-Za-z0-9_-]*$/;
+
+function addClasses(classes, text) {
+  for (const token of text.split(/\s+/)) {
+    if (CLASS_NAME.test(token)) classes.add(token);
+  }
+}
+
 function usedClasses() {
   const classes = new Set();
   for (const file of jsxFiles(SRC)) {
     const code = readFileSync(file, 'utf8');
+
+    // className="foo bar"
     for (const m of code.matchAll(/className="([^"]+)"/g)) {
-      m[1].split(/\s+/).filter(Boolean).forEach((c) => classes.add(c));
+      addClasses(classes, m[1]);
     }
-    // className={`foo ${cond ? 'bar' : ''}`} — ambil token statisnya saja
+
+    // className={`foo ${cond ? 'bar' : ''}`}
     for (const m of code.matchAll(/className=\{`([^`]*)`\}/g)) {
-      m[1]
-        .replace(/\$\{[^}]*\}/g, ' ')
-        .split(/\s+/)
-        .filter(Boolean)
-        .forEach((c) => classes.add(c));
+      const raw = m[1];
+      // token statis; token yang memuat interpolasi dilewati karena nilai
+      // akhirnya baru diketahui saat runtime (mis. `toast-${tone}`)
+      for (const token of raw.split(/\s+/)) {
+        if (!token.includes('${')) addClasses(classes, token);
+      }
+      // string literal di dalam interpolasi. Hanya cabang hasil ternary yang
+      // diambil: pada `${activeTab === 'gallery' ? 'active' : ''}`, yang
+      // merupakan class adalah 'active' — 'gallery' hanya nilai pembanding.
+      for (const expr of raw.matchAll(/\$\{[^}]*\}/g)) {
+        const questionMark = expr[0].lastIndexOf('?');
+        if (questionMark === -1) continue;
+        for (const str of expr[0].slice(questionMark).matchAll(/'([^']*)'|"([^"]*)"/g)) {
+          addClasses(classes, str[1] ?? str[2] ?? '');
+        }
+      }
     }
   }
   return [...classes].sort();

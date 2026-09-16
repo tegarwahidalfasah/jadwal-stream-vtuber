@@ -2,8 +2,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
 
-import { AuthProvider, useAuth } from '../context/AuthContext';
-import { TemplateProvider, useTemplate } from '../context/TemplateContext';
+import AuthProvider from '../context/AuthProvider';
+import TemplateProvider from '../context/TemplateProvider';
+import { useAuth } from '../hooks/useAuth';
+import { useTemplate } from '../hooks/useTemplate';
 
 function probe(hook) {
   let captured;

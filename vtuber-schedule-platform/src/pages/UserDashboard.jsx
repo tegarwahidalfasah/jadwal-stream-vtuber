@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useTemplate } from '../context/TemplateContext';
+import { useAuth } from '../hooks/useAuth';
+import { useTemplate } from '../hooks/useTemplate';
+import { useToast } from '../hooks/useToast';
 import { Layout, Palette, Calendar, Download, LogOut, User } from 'lucide-react';
 
 export default function UserDashboard() {
@@ -9,18 +10,20 @@ export default function UserDashboard() {
   const { userTemplates, getMasterTemplates, cloneTemplate } = useTemplate();
   const [activeTab, setActiveTab] = useState('gallery');
   const masterTemplates = getMasterTemplates();
+  const toast = useToast();
 
   const handleCloneTemplate = (templateId) => {
     const result = cloneTemplate(templateId, user.id);
     if (result.success) {
-      alert(`Template "${result.template.name}" berhasil ditambahkan ke workspace Anda!`);
+      toast.notify(`Template "${result.template.name}" ditambahkan ke workspace`);
     } else {
-      alert('Gagal mengkloning template: ' + result.error);
+      toast.notify('Gagal mengkloning template: ' + result.error, 'error');
     }
   };
 
   return (
     <div className="dashboard-container">
+      {toast.element}
       <header className="dashboard-header">
         <div className="header-left">
           <h1>🎬 Dashboard VTuber</h1>

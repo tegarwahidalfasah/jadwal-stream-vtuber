@@ -75,16 +75,24 @@ Aplikasi berada di subfolder `vtuber-schedule-platform/`, bukan di root repo.
 ```
 vtuber-schedule-platform/
 ├── src/
-│   ├── __tests__/        # Vitest: editor, context, dan penjaga cakupan CSS
-│   ├── context/          # React Context (Auth, Template)
+│   ├── __tests__/        # Vitest: editor, context, kanvas, penjaga cakupan CSS
+│   ├── components/       # Komponen reusable
+│   │   ├── ScheduleCanvas.jsx   # Kanvas 1920x1080 (editor, preview, OBS)
+│   │   └── Toast.jsx            # Pengganti window.alert()
+│   ├── context/          # Context object + Provider
+│   │   ├── AuthContext.js / AuthProvider.jsx
+│   │   └── TemplateContext.js / TemplateProvider.jsx
+│   ├── hooks/            # useAuth, useTemplate, useToast
 │   ├── pages/            # Page components
 │   │   ├── LoginPage.jsx
 │   │   ├── UserDashboard.jsx
 │   │   ├── AdminDashboard.jsx
 │   │   ├── TemplateEditor.jsx
+│   │   ├── PreviewPage.jsx
+│   │   ├── StreamPage.jsx       # tujuan Browser Source OBS
 │   │   └── CommunityHub.jsx
-│   ├── services/         # API & utility services
-│   │   └── exportService.js
+│   ├── services/         # exportService.js (PNG + URL Browser Source)
+│   ├── utils/            # id, format, storage, canvasDefaults
 │   ├── App.jsx           # Main app with routing
 │   └── index.css         # Global styles
 └── public/               # Static assets
@@ -132,9 +140,9 @@ Setiap template memiliki:
 | `/community` | Public | Community Hub (live streams & jadwal) |
 | `/user/dashboard` | User | Dashboard VTuber |
 | `/editor/:templateId` | User | Template editor |
-| `/preview/:templateId` | User | Preview (placeholder) |
-| `/admin/dashboard` | Admin | Admin dashboard |
-| `/stream/:userId/:templateId` | Public | Clean view untuk OBS Browser Source (placeholder) |
+| `/preview/:templateId` | User | Pratinjau ukuran penuh 1920×1080 + export PNG |
+| `/admin/dashboard` | Admin | Admin dashboard (tambah/hapus master template) |
+| `/stream/:userId/:templateId` | Public | Halaman tujuan Browser Source OBS |
 
 ## ⚠️ Keterbatasan Saat Ini
 
@@ -144,10 +152,14 @@ Hal-hal berikut masih bersifat demo dan **belum aman untuk production**:
   `admin` bisa dipilih bebas di halaman login. Tidak ada verifikasi kredensial.
 - **Semua data di localStorage** — template, jadwal, dan sesi hanya tersimpan di
   browser pengguna; tidak ada backend.
-- **Halaman `/stream/...` masih placeholder** — URL Browser Source bisa dibuat,
-  tapi halaman tujuannya belum merender jadwal.
-- **Thumbnail template belum ada** — field `thumbnail` pada master template dan
-  `public/templates/` belum diisi; galeri memakai warna sebagai pengganti.
+- **Halaman `/stream/...` membaca localStorage** — URL Browser Source bisa
+  dibuat dan halamannya sudah merender jadwal, tapi datanya berasal dari
+  localStorage browser yang sama. OBS memakai profil CEF terpisah dengan
+  localStorage sendiri, jadi URL itu belum bisa dipakai langsung dari OBS
+  sampai ada backend API.
+- **Master template admin** — tambah/hapus sudah berfungsi dan bertahan setelah
+  reload, tapi hanya tersimpan di browser admin tersebut. Tombol *Edit* masih
+  dinonaktifkan karena butuh backend.
 
 ## 🔮 Future Enhancements
 

@@ -1425,3 +1425,146 @@ input[type='range'] {
   padding: 40px;
   text-align: center;
 }
+
+/* ---------- Toast (pengganti window.alert) ---------- */
+.toast {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 19px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 13.5px;
+  font-weight: 600;
+  pointer-events: none;
+  /* Durasi di-set inline dari prop `duration`. */
+  animation: toast-life 2600ms ease forwards;
+}
+
+@keyframes toast-life {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+  8%,
+  88% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation-duration: 0.01ms;
+  }
+}
+
+.toast-success {
+  color: #bbf7d0;
+  border-color: rgba(34, 197, 94, 0.42);
+}
+
+.toast-success svg {
+  color: var(--ok);
+}
+
+.toast-error {
+  color: #fecdd3;
+  border-color: rgba(244, 63, 94, 0.45);
+}
+
+.toast-error svg {
+  color: var(--danger);
+}
+
+/* Tombol nonaktif */
+button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+button:disabled:hover {
+  transform: none;
+  filter: grayscale(0.4);
+}
+
+/* ---------- Halaman preview ukuran penuh ---------- */
+.preview-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 22px 22px 56px;
+}
+
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.preview-toolbar h1 {
+  font-size: 17px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.preview-stage {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow-x: auto;
+}
+
+/* Ukuran penuh: tanpa skala, persis seperti hasil export / tampilan OBS */
+.preview-area.full {
+  width: 1920px;
+  height: 1080px;
+  flex-shrink: 0;
+  transform-origin: top center;
+}
+
+.schedule-canvas.full {
+  transform: none;
+}
+
+@media (max-width: 1980px) {
+  .preview-area.full {
+    transform: scale(calc((100vw - 120px) / 1920));
+  }
+}
+
+/* ---------- Halaman Browser Source OBS ---------- */
+.stream-view.stream-unavailable {
+  gap: 14px;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.stream-unavailable code {
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #d8b4fe;
+}

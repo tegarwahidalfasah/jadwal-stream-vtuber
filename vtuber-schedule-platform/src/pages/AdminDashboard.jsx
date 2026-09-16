@@ -1,25 +1,75 @@
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useTemplate } from '../context/TemplateContext';
+import { useAuth } from '../hooks/useAuth';
+import { useTemplate } from '../hooks/useTemplate';
+import { useToast } from '../hooks/useToast';
+import { CANVAS_DEFAULTS } from '../utils/canvasDefaults';
 import { Layout, Plus, Edit, Trash2, LogOut, User, Palette } from 'lucide-react';
+
+const EMPTY_FORM = {
+  name: '',
+  description: '',
+  backgroundColor: CANVAS_DEFAULTS.backgroundColor,
+  accentColor: CANVAS_DEFAULTS.accentColor,
+  textColor: CANVAS_DEFAULTS.textColor,
+  fontFamily: CANVAS_DEFAULTS.fontFamily,
+  locked: { 'canvas-ratio': true, 'export-resolution': true, 'font-size': false, 'layout-grid': false },
+};
+
+const LOCK_OPTIONS = [
+  ['canvas-ratio', 'Aspect Ratio (16:9)'],
+  ['export-resolution', 'Export Resolution (1920x1080)'],
+  ['font-size', 'Font Size'],
+  ['layout-grid', 'Layout Grid'],
+];
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
-  const { getMasterTemplates } = useTemplate();
+  const { getMasterTemplates, addMasterTemplate, deleteMasterTemplate } = useTemplate();
   const [activeTab, setActiveTab] = useState('templates');
   const [showNewTemplateForm, setShowNewTemplateForm] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const toast = useToast();
 
   const masterTemplates = getMasterTemplates();
 
+  const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
   const handleCreateTemplate = (e) => {
     e.preventDefault();
-    // Di production, ini akan mengirim data ke backend
-    alert('Fitur upload template baru akan diimplementasikan dengan backend API');
-    setShowNewTemplateForm(false);
+    const result = addMasterTemplate({
+      name: form.name.trim(),
+      description: form.description.trim(),
+      lockedElements: Object.entries(form.locked)
+        .filter(([, on]) => on)
+        .map(([key]) => key),
+      customizableElements: ['colors', 'fonts', 'character-position'],
+      defaultConfig: {
+        backgroundColor: form.backgroundColor,
+        accentColor: form.accentColor,
+        textColor: form.textColor,
+        fontFamily: form.fontFamily,
+        characterPosition: { ...CANVAS_DEFAULTS.characterPosition },
+      },
+    });
+    if (result.success) {
+      toast.notify(`Template "${result.template.name}" dipublikasikan`);
+      setShowNewTemplateForm(false);
+      setForm(EMPTY_FORM);
+    } else {
+      toast.notify('Gagal menyimpan template', 'error');
+    }
+  };
+
+  const handleDeleteTemplate = (template) => {
+    // window.confirm dipakai untuk aksi destruktif; ini bukan alert() info.
+    if (!window.confirm(`Hapus master template "${template.name}"?`)) return;
+    deleteMasterTemplate(template.id);
+    toast.notify(`Template "${template.name}" dihapus`);
   };
 
   return (
     <div className="admin-dashboard-container">
+      {toast.element}
       <header className="admin-header">
         <div className="header-left">
           <h1>⚙️ Super Admin Dashboard</h1>
@@ -94,11 +144,18 @@ export default function AdminDashboard() {
                       <span>🎨 {template.customizableElements.length} customizable</span>
                     </div>
                     <div className="card-actions">
-                      <button className="action-btn-sm">
+                      <button
+                        className="action-btn-sm"
+                        disabled
+                        title="Edit template butuh backend API — belum tersedia"
+                      >
                         <Edit size={14} />
                         Edit
                       </button>
-                      <button className="action-btn-sm danger">
+                      <button
+                        className="action-btn-sm danger"
+                        onClick={() => handleDeleteTemplate(template)}
+                      >
                         <Trash2 size={14} />
                         Hapus
                       </button>
@@ -162,25 +219,48 @@ export default function AdminDashboard() {
             <form onSubmit={handleCreateTemplate}>
               <div className="form-group">
                 <label>Nama Template</label>
-                <input type="text" placeholder="Contoh: Summer Vibes" required />
+                <input
+                  type="text"
+                  placeholder="Contoh: Summer Vibes"
+                  value={form.name}
+                  onChange={(e) => setField('name', e.target.value)}
+                  required
+                />
               </div>
               <div className="form-group">
                 <label>Deskripsi</label>
-                <textarea placeholder="Deskripsi template..." rows="3" required />
+                <textarea
+                  placeholder="Deskripsi template..."
+                  rows="3"
+                  value={form.description}
+                  onChange={(e) => setField('description', e.target.value)}
+                  required
+                />
               </div>
               <div className="form-row">
                 <div className="form-group">
                   <label>Background Color</label>
-                  <input type="color" defaultValue="#1a1a2e" />
+                  <input
+                    type="color"
+                    value={form.backgroundColor}
+                    onChange={(e) => setField('backgroundColor', e.target.value)}
+                  />
                 </div>
                 <div className="form-group">
                   <label>Accent Color</label>
-                  <input type="color" defaultValue="#e94560" />
+                  <input
+                    type="color"
+                    value={form.accentColor}
+                    onChange={(e) => setField('accentColor', e.target.value)}
+                  />
                 </div>
               </div>
               <div className="form-group">
                 <label>Font Family</label>
-                <select>
+                <select
+                  value={form.fontFamily}
+                  onChange={(e) => setField('fontFamily', e.target.value)}
+                >
                   <option value="Inter">Inter</option>
                   <option value="Poppins">Poppins</option>
                   <option value="Orbitron">Orbitron</option>
@@ -190,14 +270,28 @@ export default function AdminDashboard() {
               <div className="form-group">
                 <label>Locked Elements</label>
                 <div className="checkbox-group">
-                  <label><input type="checkbox" defaultChecked /> Aspect Ratio (16:9)</label>
-                  <label><input type="checkbox" defaultChecked /> Export Resolution (1920x1080)</label>
-                  <label><input type="checkbox" /> Font Size</label>
-                  <label><input type="checkbox" /> Layout Grid</label>
+                  {LOCK_OPTIONS.map(([key, label]) => (
+                    <label key={key}>
+                      <input
+                        type="checkbox"
+                        checked={form.locked[key]}
+                        onChange={(e) =>
+                          setField('locked', { ...form.locked, [key]: e.target.checked })
+                        }
+                      />
+                      {label}
+                    </label>
+                  ))}
                 </div>
               </div>
               <div className="modal-actions">
-                <button type="button" onClick={() => setShowNewTemplateForm(false)}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewTemplateForm(false);
+                    setForm(EMPTY_FORM);
+                  }}
+                >
                   Batal
                 </button>
                 <button type="submit" className="primary">
