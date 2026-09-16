@@ -2,9 +2,21 @@ import { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext(null);
 
+function readStoredUser() {
+  try {
+    const raw = localStorage.getItem('vtuber_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    console.error('Failed to restore session:', e);
+    return null;
+  }
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Lazy initializer: restore sesi pada render pertama, tanpa efek samping
+  // di dalam useState(() => {...}) yang dijalankan ganda oleh StrictMode.
+  const [user, setUser] = useState(readStoredUser);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => user !== null);
 
   // Simulasi login - nanti akan diganti dengan API call
   const login = (email, password, role) => {
@@ -32,20 +44,6 @@ export function AuthProvider({ children }) {
     setIsAuthenticated(false);
     localStorage.removeItem('vtuber_user');
   };
-
-  // Restore session dari localStorage
-  useState(() => {
-    const savedUser = localStorage.getItem('vtuber_user');
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        setUser(parsed);
-        setIsAuthenticated(true);
-      } catch (e) {
-        console.error('Failed to restore session:', e);
-      }
-    }
-  });
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>

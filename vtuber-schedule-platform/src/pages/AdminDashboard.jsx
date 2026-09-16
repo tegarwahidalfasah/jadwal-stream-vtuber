@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTemplate } from '../context/TemplateContext';
 import { Layout, Plus, Edit, Trash2, LogOut, User, Palette } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const { getMasterTemplates } = useTemplate();
   const [activeTab, setActiveTab] = useState('templates');
   const [showNewTemplateForm, setShowNewTemplateForm] = useState(false);

@@ -4,19 +4,26 @@ import { useTemplate } from '../context/TemplateContext';
 import { useAuth } from '../context/AuthContext';
 import { exportToPNG, generateBrowserSourceURL } from '../services/exportService';
 import { 
-  Save, Download, Upload, Type, Palette, Image as ImageIcon, 
-  MonitorPlay, Link as LinkIcon, Check, X 
+  Save, Download, Type, Palette, Image as ImageIcon, 
+  MonitorPlay, Check, X 
 } from 'lucide-react';
 
 export default function TemplateEditor() {
   const { templateId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getUserTemplate, updateTemplateConfig, saveSchedule } = useTemplate();
+  const { getUserTemplate, updateTemplateConfig, saveSchedule, schedules } = useTemplate();
   
   const template = getUserTemplate(templateId);
-  const [config, setConfig] = useState(template?.config || {});
-  const [scheduleEntries, setScheduleEntries] = useState([]);
+  // Config diambil langsung dari context (single source of truth). Menyimpannya
+  // di useState(template?.config || {}) membuat config terkunci ke {} bila
+  // template belum tersedia saat render pertama — kustomisasi user lalu hilang.
+  const config = template?.config || {};
+  const storedSchedule = schedules.find((s) => s.templateId === templateId);
+  // TemplateContext memuat localStorage secara sinkron (lazy initializer), jadi
+  // jadwal tersimpan sudah tersedia pada render pertama. App.jsx memasang
+  // key={templateId} sehingga pindah template me-remount dan state ini segar lagi.
+  const [scheduleEntries, setScheduleEntries] = useState(() => storedSchedule?.entries ?? []);
   const [showExportOptions, setShowExportOptions] = useState(false);
   const [browserSourceUrl, setBrowserSourceUrl] = useState('');
 
@@ -30,9 +37,8 @@ export default function TemplateEditor() {
   }
 
   const handleConfigChange = (key, value) => {
-    const newConfig = { ...config, [key]: value };
-    setConfig(newConfig);
-    updateTemplateConfig(templateId, newConfig);
+    // updateTemplateConfig sudah melakukan merge, jadi cukup kirim field yang berubah.
+    updateTemplateConfig(templateId, { [key]: value });
   };
 
   const handleCharacterPositionChange = (axis, value) => {
@@ -240,7 +246,7 @@ export default function TemplateEditor() {
                 {scheduleEntries.length === 0 ? (
                   <p className="empty-canvas">Tambahkan jadwal dari sidebar</p>
                 ) : (
-                  scheduleEntries.map((entry, idx) => (
+                  scheduleEntries.map((entry) => (
                     <div key={entry.id} className="schedule-row">
                       <span className="day-badge">Hari {entry.day}</span>
                       <span className="time-badge">{entry.time}</span>

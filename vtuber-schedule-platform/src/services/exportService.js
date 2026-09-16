@@ -8,15 +8,26 @@ export const exportToPNG = async (elementId, filename = 'schedule.png') => {
       return { success: false, error: 'Element tidak ditemukan' };
     }
 
-    const canvas = await html2canvas(element, {
-      width: 1920,
-      height: 1080,
-      scale: 1,
-      backgroundColor: null,
-      logging: false,
-      useCORS: true,
-      allowTaint: true
-    });
+    // Kanvas preview diskalakan lewat CSS transform agar muat di layar.
+    // transform harus dilepas sementara, kalau tidak html2canvas menangkap
+    // versi yang sudah dikecilkan sehingga PNG 1920x1080 hasilnya kosong.
+    const previousTransform = element.style.transform;
+    element.style.transform = 'none';
+
+    let canvas;
+    try {
+      canvas = await html2canvas(element, {
+        width: 1920,
+        height: 1080,
+        scale: 1,
+        backgroundColor: null,
+        logging: false,
+        useCORS: true,
+        allowTaint: true
+      });
+    } finally {
+      element.style.transform = previousTransform;
+    }
 
     // Convert ke blob dan download
     return new Promise((resolve) => {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTemplate } from '../context/TemplateContext';
 import { Layout, Palette, Calendar, Download, LogOut, User } from 'lucide-react';
@@ -123,14 +124,14 @@ export default function UserDashboard() {
                       </span>
                     </div>
                     <div className="workspace-actions">
-                      <a href={`/editor/${template.id}`} className="action-btn primary">
+                      <Link to={`/editor/${template.id}`} className="action-btn primary">
                         <Palette size={16} />
                         Edit
-                      </a>
-                      <a href={`/preview/${template.id}`} className="action-btn">
+                      </Link>
+                      <Link to={`/preview/${template.id}`} className="action-btn">
                         <Download size={16} />
                         Preview
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 ))}

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 const TemplateContext = createContext(null);
 
@@ -61,22 +61,23 @@ const MASTER_TEMPLATES = [
   }
 ];
 
-export function TemplateProvider({ children }) {
-  const [userTemplates, setUserTemplates] = useState([]);
-  const [currentTemplate, setCurrentTemplate] = useState(null);
-  const [schedules, setSchedules] = useState([]);
+function readStored(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    console.error(`Gagal membaca ${key} dari localStorage:`, e);
+    return fallback;
+  }
+}
 
-  // Load user templates dari localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('vtuber_templates');
-    if (saved) {
-      try {
-        setUserTemplates(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to load templates:', e);
-      }
-    }
-  }, []);
+export function TemplateProvider({ children }) {
+  // Lazy initializer (bukan useEffect) supaya data sudah tersedia pada render
+  // pertama. Kalau dimuat di useEffect, konsumen seperti TemplateEditor akan
+  // melihat template `undefined` pada render pertama dan mengunci state ke {}.
+  const [userTemplates, setUserTemplates] = useState(() => readStored('vtuber_templates', []));
+  const [currentTemplate, setCurrentTemplate] = useState(null);
+  const [schedules, setSchedules] = useState(() => readStored('vtuber_schedules', []));
 
   // Clone template dari master ke workspace user
   const cloneTemplate = (templateId, userId) => {

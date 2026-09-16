@@ -1,17 +1,13 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { useTemplate } from '../context/TemplateContext';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Calendar, Clock, Users, Activity } from 'lucide-react';
 
-export default function CommunityHub() {
-  const { getMasterTemplates } = useTemplate();
-  const [liveStreams, setLiveStreams] = useState([]);
-  const [upcomingStreams, setUpcomingStreams] = useState([]);
-  
-  // Mock data untuk demo - di production ini akan fetch dari API
-  useEffect(() => {
-    // Simulasi data live streams dari komunitas
-    const mockLiveStreams = [
+// Mock data untuk demo — di production ini akan di-fetch dari API.
+// Dibangun lewat lazy initializer, bukan useEffect + setState, supaya tidak
+// memicu render berantai.
+function buildMockData() {
+  return {
+    liveStreams: [
       {
         id: 'stream-1',
         vtuberName: 'Sora Wirya',
@@ -30,9 +26,8 @@ export default function CommunityHub() {
         startedAt: new Date(Date.now() - 1800000).toISOString(),
         platform: 'Twitch'
       }
-    ];
-
-    const mockUpcomingStreams = [
+    ],
+    upcomingStreams: [
       {
         id: 'upcoming-1',
         vtuberName: 'Akira Blaze',
@@ -54,11 +49,14 @@ export default function CommunityHub() {
         scheduledFor: new Date(Date.now() + 28800000).toISOString(),
         platform: 'YouTube'
       }
-    ];
+    ]
+  };
+}
 
-    setLiveStreams(mockLiveStreams);
-    setUpcomingStreams(mockUpcomingStreams);
-  }, []);
+export default function CommunityHub() {
+  const [mock] = useState(buildMockData);
+  const liveStreams = mock.liveStreams;
+  const upcomingStreams = mock.upcomingStreams;
 
   const formatTimeAgo = (dateString) => {
     const date = new Date(dateString);
@@ -95,6 +93,7 @@ export default function CommunityHub() {
       <header className="hub-header">
         <h1>🌟 VTuber Community Hub</h1>
         <p>Jadwal dan status live dari seluruh teman VTuber</p>
+        <Link to="/login" className="hub-login">Masuk untuk membuat jadwal</Link>
       </header>
 
       <section className="live-section">

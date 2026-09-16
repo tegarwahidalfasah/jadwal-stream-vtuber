@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TemplateProvider } from './context/TemplateContext';
 import LoginPage from './pages/LoginPage';
@@ -38,8 +38,22 @@ function AdminRoute({ children }) {
   return children;
 }
 
+// Editor dipasang dengan key={templateId} agar berpindah template me-remount
+// komponen, sehingga state lokal (daftar jadwal) selalu segar per template.
+function EditorRoute() {
+  const { templateId } = useParams();
+  return (
+    <UserRoute>
+      <TemplateEditor key={templateId} />
+    </UserRoute>
+  );
+}
+
 // Stream View (untuk Browser Source OBS - public access dengan clean URL)
-function StreamView({ userId, templateId }) {
+function StreamView() {
+  // useParams() ikut ter-update saat navigasi client-side;
+  // window.location.pathname.split() tidak.
+  const { userId, templateId } = useParams();
   return (
     <div className="stream-view">
       <h1>Stream View: {userId} / {templateId}</h1>
@@ -63,14 +77,7 @@ function AppRoutes() {
           </UserRoute>
         } 
       />
-      <Route 
-        path="/editor/:templateId" 
-        element={
-          <UserRoute>
-            <TemplateEditor />
-          </UserRoute>
-        } 
-      />
+      <Route path="/editor/:templateId" element={<EditorRoute />} />
       <Route 
         path="/preview/:templateId" 
         element={
@@ -91,15 +98,17 @@ function AppRoutes() {
       
       <Route 
         path="/stream/:userId/:templateId" 
-        element={
-          <StreamView 
-            userId={window.location.pathname.split('/')[2]} 
-            templateId={window.location.pathname.split('/')[3]} 
-          />
-        } 
+        element={<StreamView />} 
       />
       
-      <Route path="*" element={<div>Halaman tidak ditemukan</div>} />
+      <Route 
+        path="*" 
+        element={
+          <div className="error-page">
+            <h2>Halaman tidak ditemukan</h2>
+          </div>
+        } 
+      />
     </Routes>
   );
 }
